@@ -1,0 +1,39 @@
+{
+    "development": {
+        "config_id": "development",
+        "node_port": 1869,
+        "json_indentation": 4,
+        "host": "localhost",
+        "database": "firm-to-develop-nft-platform-dev",
+        "swaggerURL": "localhost:1869",
+        "nodemailer": {
+            "user": "mobiloittetesting123@gmail.com",
+            "pass": "Mobiloitte@12"
+        }
+    },
+    "staging": {
+        "config_id": "staging",
+        "node_port": 1869,
+        "json_indentation": 4,
+        "host": "localhost",
+        "database": "firm-to-develop-nft-platform-stag",
+        "swaggerURL": "182.72.203.245:1869",
+        
+        "nodemailer": {
+            "user": "mobiloittetesting123@gmail.com",
+            "pass": "Mobiloitte@12"
+        }
+    },
+    "production": {
+        "config_id": "production",
+        "node_port": 1838,
+        "database": "Crypto_Web_Platform_for_Token_Analysis2-stag",
+        "host": "localhost"
+     
+    }
+}
+
+
+
+
+
