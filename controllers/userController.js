@@ -10,9 +10,10 @@ const auth = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const multiparty = require('multiparty');
 const password = 'bafkreiazkoqwn4sxar7f4f66ic6zuneqgpvh2ym4cwxetc7mk4dyyym55e';
+const crypto = require('../helper/crypto')
 
-const crypto = require("crypto");
-const hash = crypto.createHash('sha256');
+// const crypto = require("crypto");
+// const hash = crypto.createHash('sha256');
 
 
 
@@ -22,18 +23,22 @@ module.exports = {
         try {
             const walletCheck = await userModel.findOne({ walletAddress: req.body.walletAddress, privateKey: req.body.privateKey, status: "ACTIVE" });
             console.log("====walletCheck", walletCheck)
-            const privateKey = encrypt(req.body.privateKey, password)
+            req.body.privateKey = crypto.encrypt(req.body.privateKey, password)
+            // console.log('26 >>>>>>>',req.body)
             if (walletCheck) {
+                console.log('iF ==================>>>l')
+
                 var token = jwt.sign({ id: walletCheck._id, iat: Math.floor(Date.now() / 1000) - 30 }, 'marketPlace-developer', { expiresIn: '365d' });
                 let result = {
                     userId: walletCheck._id,
                     token: token,
                     walletAddress: walletCheck.walletAddress,
                     userType: walletCheck.userType,
-                    privateKey: privateKey,
+                    privateKey:req.body.privateKey,
                 };
                 response(res, SuccessCode.SUCCESS, result, SuccessMessage.DATA_SAVED)
             } else {
+                console.log('38 >>>>>>>',req.body)
                 const saveRes = await new userModel(req.body).save();
                 if (saveRes) {
                     var token1 = jwt.sign({ id: saveRes._id, iat: Math.floor(Date.now() / 1000) - 30 }, 'marketPlace-developer', { expiresIn: '365d' });
@@ -42,7 +47,7 @@ module.exports = {
                         token: token1,
                         walletAddress: saveRes.walletAddress,
                         userType: saveRes.userType,
-                        privateKey: privateKey,
+                        privateKey:req.body.privateKey,
                     };
                     response(res, SuccessCode.SUCCESS, result1, SuccessMessage.DATA_SAVED);
                 }
@@ -188,20 +193,20 @@ function convertImage(profilePic) {
         })
     })
 }
-const encrypt = (text, password) => {
+// const encrypt = (text, password) => {
 
 
-    const passwordHash = crypto.createHash('sha256').update(password).digest();
-    const secretKey = Buffer.from(passwordHash).toString('hex', 16);
-    const iv = crypto.randomBytes(16);
+//     const passwordHash = crypto.createHash('sha256').update(password).digest();
+//     const secretKey = Buffer.from(passwordHash).toString('hex', 16);
+//     const iv = crypto.randomBytes(16);
 
-    const cipher = crypto.createCipheriv('aes-256-ctr', secretKey, iv);
-    const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
+//     const cipher = crypto.createCipheriv('aes-256-ctr', secretKey, iv);
+//     const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
 
-    // return {
-    //     iv: iv.toString('hex'),
-    //     content: encrypted.toString('hex')
-    // };
+//     return {
+//         iv: iv.toString('hex'),
+//         content: encrypted.toString('hex')
+//     };
 
-    return iv.toString('hex') + ':' + encrypted.toString('hex')
-};
+//     // return iv.toString('hex') + ':' + encrypted.toString('hex')
+// };

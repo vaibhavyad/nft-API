@@ -14,7 +14,7 @@ const openMarketHelper = require('../openMarketFunction/openMarketHelper');
 const fs = require('fs');
 const { create } = require('ipfs-http-client');
 const ipfs = create({ host: 'ipfs.infura.io', port: '5001', protocol: 'https' });
-
+const crypto = require('../helper/crypto')
 
 module.exports = {
 
@@ -64,7 +64,7 @@ module.exports = {
             response(res, ErrorCode.SOMETHING_WRONG, [], ErrorMessage.SOMETHING_WRONG)
         }
     },
-
+    
     addNft: async (req, res) => {
         try {
             const userData = await userModel.findOne({ _id: req.userId, userType: { $in: ["USER"] } })
@@ -72,7 +72,8 @@ module.exports = {
                 response(res, ErrorCode.NOT_FOUND, [], ErrorMessage.USER_NOT_FOUND)
             } else {
                 const addressCheck = await nftModel.findOne({ tokenId: req.body.tokenId, status: "ACTIVE" });
-                const createFunction = await openMarketHelper.create(req.body.uri, req.body.tokenName)
+                console.log("++++++++=========");
+                const createFunction = await openMarketHelper.create(req.body.uri, req.body.tokenName, userData.privateKey)
                 if (createFunction) {
                     console.log("====75", createFunction.transactionHash)
                     req.body.transactionHash = createFunction.transactionHash
@@ -140,12 +141,14 @@ module.exports = {
             if (!userData) {
                 response(res, ErrorCode.NOT_FOUND, [], ErrorMessage.USER_NOT_FOUND)
             } else {
+                let nftData = await nftModel.findOne({ userId: userData._id ,_id: req.body.nftId });
+                console.log("nftData",nftData);
+                console.log("nftDataprivare je=", userData.privateKey );
 
-                let nftData = await nftModel.findOne({ userId: userData._id });
-                let openMarketResult = await openMarketHelper.nftApprove(nftData.tokenId);
+                let openMarketResult = await openMarketHelper.nftApprove(nftData.tokenId, userData.privateKey);
                 if (openMarketResult) {
-                    console.log('openMarketResult >>>>>>>>>>>. ', openMarketResult)
-                    let createOrderResult = await openMarketHelper.createOrder(nftData.tokenId, req.body.price, req.body.expiryTime);
+                    let createOrderResult = await openMarketHelper.createOrder(nftData.tokenId, req.body.price, req.body.expiryTime, userData.privateKey);
+                    
                     if (createOrderResult) {
                         req.body.transactionHash = createOrderResult.transactionHash;
                         const nftCheck = await nftModel.findOne({ _id: req.body.nftId, status: "ACTIVE" });
@@ -204,7 +207,7 @@ module.exports = {
                 }
                 else {
                     let nftData = await nftModel.findOne({ _id: orderData.nftId });
-                    let updateOrder = await openMarketHelper.updateOrder(nftData.tokenId, req.body.price, req.body.expiryTime);
+                    let updateOrder = await openMarketHelper.updateOrder(nftData.tokenId, req.body.price, req.body.expiryTime, userData.privateKey);
                     if (updateOrder) {
                         req.body.transactionHash = updateOrder.transactionHash;
                         console.log(">>>>>>>>>>>>>>>>>>>>", updateOrder)
@@ -226,16 +229,21 @@ module.exports = {
             if (!userData) {
                 response(res, ErrorCode.NOT_FOUND, [], ErrorMessage.USER_NOT_FOUND)
             } else {
-                let orderData = await orderModel.findOne({ userId: userData._id });
+                let orderData = await orderModel.findOne({ _id: req.body.orderId });
+                console.log("==========");
+                console.log("==========",orderData);
+
                 let nftData = await nftModel.findOne({ _id: orderData.nftId });
-                let ercApproveResult = await openMarketHelper.ercApprove(orderData.price) //
+                let ercApproveResult = await openMarketHelper.ercApprove(orderData.price, userData.privateKey) //
+                console.log("*****************");
                 if (ercApproveResult) {
                     console.log("ercApproveResult >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ", ercApproveResult)
-                    let safeExecuteOrderResult = await openMarketHelper.safeExecuteOrder(nftData.tokenId, req.body.price)
+                    let safeExecuteOrderResult = await openMarketHelper.safeExecuteOrder(nftData.tokenId, req.body.price, userData.privateKey)
                     if (safeExecuteOrderResult) {
                         console.log("safeExecuteOrderResult >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ", safeExecuteOrderResult)
                         req.body.transactionHash = safeExecuteOrderResult.transactionHash;
                         const nftCheck = await orderModel.findOne({ _id: req.body.orderId, status: "ACTIVE" }); //change body-params
+                        console.log("================+++++++++++");
                         if (!nftCheck) {
                             response(res, ErrorCode.NOT_FOUND, [], ErrorMessage.NOT_FOUND);
                         } else {
@@ -247,6 +255,7 @@ module.exports = {
                                 const updateRes = await nftModel.findOneAndUpdate({ nftId: nftCheck.nftId }, { $set: req.body })
                                 response(res, SuccessCode.SUCCESS, saved, SuccessMessage.ORDER_PLACED);
                             }
+                            console.log("////////////");
                         }
                     }
                 }
@@ -311,6 +320,7 @@ module.exports = {
         }
     },
 
+
     nftWithoutOrderList: async (req, res) => {
         try {
             // featuredAll()
@@ -372,11 +382,11 @@ module.exports = {
                     response(res, ErrorCode.NOT_FOUND, [], ErrorMessage.NOT_FOUND);
                 } else {
                     let nftData = await nftModel.findOne({ _id: orderCheck.nftId });
-                    let ercApproveResult = await openMarketHelper.ercApprove(req.body.price) //
+                    let ercApproveResult = await openMarketHelper.ercApprove(req.body.price, userData.privateKey) //
                     if (ercApproveResult) {
                         console.log("ercApproveResult +_+++++++++===============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ", ercApproveResult)
                         let safePlaceBid = await openMarketHelper.safePlaceBid(nftData.tokenId, req.body.price, req.body.expireTime, userData.privateKey);
-                        console.log("======376", safePlaceBid.transactionHash)
+                        // console.log("======376", safePlaceBid.transactionHash)
                         if (safePlaceBid) {
                             req.body.transactionHash = safePlaceBid.transactionHash;
                             req.body.userId = userData._id;
@@ -408,7 +418,7 @@ module.exports = {
                     response(res, ErrorCode.NOT_FOUND, [], ErrorMessage.NOT_FOUND);
                 } else {
                     let nftData = await nftModel.findOne({ _id: bidCheck.nftId });
-                    let cancelBid = await openMarketHelper.cancelBid(nftData.tokenId);
+                    let cancelBid = await openMarketHelper.cancelBid(nftData.tokenId, userData.privateKey);
                     if (cancelBid) {
                         req.body.transactionHash = cancelBid.transactionHash;
                         req.body.userId = userData._id;
@@ -457,7 +467,7 @@ module.exports = {
                 } else {
                     let nftData = await nftModel.findOne({ _id: bidCheck.nftId });
                     console.log("====454=====", nftData)
-                    let acceptBid = await openMarketHelper.acceptBid(nftData.tokenId, bidCheck.price);
+                    let acceptBid = await openMarketHelper.acceptBid(nftData.tokenId, bidCheck.price, user.privateKey);
                     console.log("=====455+++++++++++++++++", acceptBid)
                     if (acceptBid) {
                         req.body.transactionHash = acceptBid.transactionHash;

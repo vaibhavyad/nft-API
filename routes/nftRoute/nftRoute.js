@@ -446,7 +446,7 @@ router.post('/placeBid', auth.verifyToken, nftController.placeBid)
  *         description: token ? in header
  *         in: header
  *         required: true
- *       - name: bidId
+ *       - name: _id
  *         description:  bidId ?? _id
  *         in: formData
  *         required: true    
